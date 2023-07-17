@@ -75,3 +75,15 @@ app.post("/zoom", (req, res) => {
           const stJoinURL = finalRes.join_url;
           console.log(`${firstName} ${lastName} Registered Successfully: ${stJoinURL}`);
           res.status(200).send({'join_link': stJoinURL});
+        } else {
+          console.log(body);
+          res.status(400).send("Error: " + JSON.parse(body).message);
+        }
+      }
+    });
+  }
+});
+
+app.listen(3000, () => {
+  console.log("Server started on port 3000");
+});
