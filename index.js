@@ -1,119 +1,77 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Test Meeting Registration</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-body {
-    padding: 2% 20%;
-    font-family: 'Outfit'}
-    * {box-sizing: border-box;}
+const express = require("express");
+const request = require("request");
+var base64 = require('base-64');
 
-input[type=text], select, textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-  margin-top: 6px;
-  margin-bottom: 16px;
-  resize: vertical;
-}
+const app = express();
+app.use(express.json());
 
-button {
-  width: 100%;
-  background-color: #2851a8;
-  color: white;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
+app.get("/", (req, res) => {
+  res.status(200).send("Started!");
+});
 
-button:hover {
-  background-color: #4562a0;
-}
+app.post("/zoom", (req, res) => {
+  console.log(req.body);
+  const meetingID = req.body.meetingID;
+  const firstName = req.body.firstName;
+  const lastName = req.body.lastName;
+  const accountId = req.body.accountId;
+  const clientID = req.body.clientID;
+  const clientSecret = req.body.clientSecret;
 
-.container {
-  border-radius: 5px;
-  background-color: #f2f2f2;
-  padding: 20px;
-}
+  // Make a request to the Zoom API to get the oAuth Token
+  const options = {
+    url: `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${accountId}`,
+    method: "POST",
+    headers: {
+      "Authorization": 'Basic ' + base64.encode(clientID + ":" + clientSecret),
+      "Content-Type": "application/json",
+    },
+  };
 
-.topic {
-  font-size: 20px;
-}
-</style>
-</head>
-<body>
+  request(options, (err, response, body) => {
+    if (err) {
+      console.log(err);
+      res.status(500).send("Error Getting oAuth Token:" + err);
+    } else {
+      if (response.statusCode === 200) {
+        const responseBody = JSON.parse(body);
+        const accessToken = responseBody.access_token;
+        // console.log(accessToken)
+        console.log("oAuth Token Received successfully");
+        addMeetingReg(accessToken);
+      } else {
+        console.log(body);
+        res.status(400).send("Error Getting oAuth Token: " + body);
+      }
+    }
+  });
 
-<h4 class="topic"><center>Test Meeting Registration</center></h4>
+  function addMeetingReg(accessToken) {
+    // Make a request to the Zoom API to add Meeting Registrant
+    const options = {
+      method: 'POST',
+      url: `https://api.zoom.us/v2/meetings/${meetingID}/registrants`,
+      headers: { 'Content-Type': 'application/json', "Authorization": "Bearer " + accessToken },
+      body: JSON.stringify({
+        "first_name": firstName,
+        "last_name": lastName,
+        "email": firstName + "@sipmuthu.lk",
+        "state": "Sri Lanka",
+        "comments": "Class Link",
+        "job_title": "Student",
+        "org": "Sipmuthu",
+        "language": "en-US",
+        "auto_approve": true
+      })
+    };
 
-<div class="container">
-  <form>
-    <label for="fname">First Name</label>
-    <input type="text" id="fname" name="firstname" placeholder="Your first name..">
-
-    <label for="lname">Last Name</label>
-    <input type="text" id="lname" name="lastname" placeholder="Your last name..">
-
-    <label for="lname">Meeting ID</label>
-    <input type="text" id="mid" name="mid" placeholder="Your Meeting ID..">
-
-    <label for="accountId">Zoom Account ID</label>
-    <input type="text" id="accountId" name="accountId" placeholder="Your Zoom Account ID">
-
-    <label for="clientID">Zoom Client ID</label>
-    <input type="text" id="clientID" name="clientID" placeholder="Your Zoom Client ID">
-
-    <label for="clientSecret">Zoom Client Secret</label>
-    <input type="text" id="clientSecret" name="clientSecret" placeholder="Your Zoom Client Secret">
-
-    <button type="submit" value="Submit" id="submit">Submit</button>
-  </form>
-</div>
-<script>
-    document.getElementById("submit").addEventListener("click", function(event){
-        event.preventDefault()
-        meetingID = document.getElementById('mid').value
-        firstName = document.getElementById('fname').value
-        lastName = document.getElementById('lname').value
-        accountId = document.getElementById('accountId').value
-        clientID = document.getElementById('clientID').value
-        clientSecret = document.getElementById('clientSecret').value
-
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "https://sipmuthu-zoom.onrender.com/zoom");
-        xhr.setRequestHeader("Content-Type", "application/json");
-
-        const data = {
-          meetingID: meetingID,
-          firstName: firstName,
-          lastName: lastName,
-          accountId: accountId,
-          clientID: clientID,
-          clientSecret: clientSecret
-        };
-
-        xhr.send(JSON.stringify(data));
-
-        xhr.onload = function() {
-        if (xhr.status === 200) {
-            const response = xhr.responseText;
-            console.log(xhr.responseText);
-            join_link = (JSON.parse(response))["join_link"]
-            alert("Registrant created successfully.\nJoin link: " + join_link);
-            window.open(join_link)
-        } else {
-            const error = xhr.responseText;
-            alert("Error creating registrant\n" + error);
-        }
-        };
-
-    });
-</script>
-</body>
-</html>
+    request(options, (err, response, body) => {
+      if (err) {
+        console.log(err);
+        res.status(500).send("Error Adding Meeting Registrant: " + err);
+      } else {
+        if (response.statusCode === 201 && (response.statusMessage === "Created" || response.statusMessage === "created")) {
+          const finalRes = JSON.parse(body);
+          const stJoinURL = finalRes.join_url;
+          console.log(`${firstName} ${lastName} Registered Successfully: ${stJoinURL}`);
+          res.status(200).send({'join_link': stJoinURL});
