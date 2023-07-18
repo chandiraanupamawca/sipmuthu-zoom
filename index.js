@@ -18,6 +18,13 @@ app.post("/zoom", (req, res) => {
   const clientID = req.body.clientID;
   const clientSecret = req.body.clientSecret;
 
+  // Check for null values
+  if (!meetingID || !firstName || !lastName || !accountId || !clientID || !clientSecret) {
+    console.log("All fields are required!");
+    res.status(400).send("All fields are required!");
+    return;
+  }
+
   // Make a request to the Zoom API to get the oAuth Token
   const options = {
     url: `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${accountId}`,
@@ -55,7 +62,7 @@ app.post("/zoom", (req, res) => {
       body: JSON.stringify({
         "first_name": firstName,
         "last_name": lastName,
-        "email": firstName + "@sipmuthu.lk",
+        "email": firstName + '.' + meetingID + "@sipmuthu.lk",
         "state": "Sri Lanka",
         "comments": "Class Link",
         "job_title": "Student",
