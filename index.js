@@ -38,7 +38,7 @@ app.post("/zoom", (req, res) => {
   request(options, (err, response, body) => {
     if (err) {
       console.log(err);
-      res.status(500).send("Error Getting oAuth Token:" + err);
+      res.status(400).send("Error Getting oAuth Token:" + err);
     } else {
       if (response.statusCode === 200) {
         const responseBody = JSON.parse(body);
@@ -75,7 +75,7 @@ app.post("/zoom", (req, res) => {
     request(options, (err, response, body) => {
       if (err) {
         console.log(err);
-        res.status(500).send("Error Adding Meeting Registrant: " + err);
+        res.status(400).send("Error Adding Meeting Registrant: " + err);
       } else {
         if (response.statusCode === 201 && (response.statusMessage === "Created" || response.statusMessage === "created")) {
           const finalRes = JSON.parse(body);
